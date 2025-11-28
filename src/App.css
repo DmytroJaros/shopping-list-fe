@@ -284,3 +284,19 @@ body {
 .leave-btn {
   margin-top: 0.25rem;
 }
+
+.view-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.view-select {
+  background-color: #020617;
+  border: 1px solid #4b5563;
+  border-radius: 0.375rem;
+  color: #e5e7eb;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.8rem;
+}

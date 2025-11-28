@@ -1,17 +1,13 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 
-// Simulated ids for owner and current user
 const OWNER_ID = '1';
-const CURRENT_USER_ID = '1';
 
-// Initial members for this list
 const INITIAL_MEMBERS = [
   { id: '1', name: 'John Doe', email: 'john@example.com', role: 'Owner', initial: 'J' },
   { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'Member', initial: 'J' },
 ];
 
-// Initial items for this list
 const INITIAL_ITEMS = [
   { id: '1', name: 'Milk', done: false },
   { id: '2', name: 'Bread', done: true },
@@ -20,6 +16,8 @@ const INITIAL_ITEMS = [
 
 function ListDetailPage() {
   const { id } = useParams();
+
+  const [currentUserId, setCurrentUserId] = useState(OWNER_ID);
 
   // List name state
   const [listName, setListName] = useState('My Shopping List');
@@ -33,9 +31,11 @@ function ListDetailPage() {
   const [newItemName, setNewItemName] = useState('');
   const [showOnlyUnresolved, setShowOnlyUnresolved] = useState(false);
 
-  const isOwner = CURRENT_USER_ID === OWNER_ID;
+  const isOwner = currentUserId === OWNER_ID;
+  const [hasLeft, setHasLeft] = useState(false);
 
-  // --- List name logic (only owner can change) ---
+
+  // List name logic (only owner can change)
 
   const startEditName = () => {
     if (!isOwner) return;
@@ -54,7 +54,7 @@ function ListDetailPage() {
     setIsEditingName(false);
   };
 
-  // --- Members logic ---
+  // Members logic
 
   const inviteMember = () => {
     if (!isOwner) return;
@@ -94,10 +94,11 @@ function ListDetailPage() {
       return;
     }
 
-    setMembers((prev) => prev.filter((m) => m.id !== CURRENT_USER_ID));
+    setMembers((prev) => prev.filter((m) => m.id !== currentUserId));
+    setHasLeft(true);
   };
 
-  // --- Items logic ---
+  // Items logic
 
   const toggleItem = (itemId) => {
     setItems((prevItems) =>
@@ -131,6 +132,14 @@ function ListDetailPage() {
   const displayedItems = showOnlyUnresolved
     ? items.filter((item) => !item.done)
     : items;
+
+  if (hasLeft) {
+    return (
+      <div className="page">
+        <p>You have left this list and no longer have access.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="page">
@@ -166,46 +175,60 @@ function ListDetailPage() {
               {isOwner && (
                 <button
                   type="button"
-                  className="icon-button"
+                  className="btn-outline"
                   onClick={startEditName}
-                  title="Edit list name"
                 >
-                  ✏
+                  Edit name
                 </button>
               )}
             </>
           )}
         </div>
 
-        <div className="page-header-right">
-          <span className="header-meta">List id: {id}</span>
-          <span className="header-meta">
-            Role: {isOwner ? 'Owner' : 'Member'}
-          </span>
-          {!isOwner && (
-            <button
-              type="button"
-              className="btn-outline leave-btn"
-              onClick={leaveList}
-            >
-              Leave list
-            </button>
-          )}
-        </div>
+    <div className="page-header-right">
+      <span className="header-meta">List id: {id}</span>
+      <span className="header-meta">
+        Role: {isOwner ? 'Owner' : 'Member'}
+      </span>
+
+      <div className="view-switcher">
+        <span className="header-meta">View as:</span>
+        <select
+          className="view-select"
+          value={currentUserId}
+          onChange={(e) => setCurrentUserId(e.target.value)}
+        >
+          <option value="1">Owner (John Doe)</option>
+          <option value="2">Member (Jane Smith)</option>
+        </select>
+      </div>
+
+      {!isOwner && (
+        <button
+          type="button"
+          className="btn-outline leave-btn"
+          onClick={leaveList}
+        >
+          Leave list
+        </button>
+      )}
+    </div>
+
       </header>
 
       {/* Members section */}
       <section className="section">
         <div className="section-header">
           <h2>Members</h2>
-          <button
-            type="button"
-            className="btn-outline"
-            onClick={inviteMember}
-            disabled={!isOwner}
-          >
-            Invite member
-          </button>
+          {isOwner && (
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={inviteMember}
+            >
+              Invite member
+            </button>
+          )}
         </div>
 
         <div className="members-list">
