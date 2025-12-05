@@ -14,15 +14,19 @@ const INITIAL_ITEMS = [
   { id: '3', name: 'Eggs', done: false },
 ];
 
-function ListDetailPage() {
+function ListDetailPage({ shoppingLists }) {
   const { id } = useParams();
+  const listId = Number(id);
+
+  const list = shoppingLists.find((l) => l.id === listId);
+  const initialListName = list?.name ?? "My Shopping List";
 
   const [currentUserId, setCurrentUserId] = useState(OWNER_ID);
 
   // List name state
-  const [listName, setListName] = useState('My Shopping List');
+  const [listName, setListName] = useState(initialListName);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [editedListName, setEditedListName] = useState(listName);
+  const [editedListName, setEditedListName] = useState(initialListName);
 
   // Members and items
   const [members, setMembers] = useState(INITIAL_MEMBERS);
@@ -133,6 +137,13 @@ function ListDetailPage() {
     ? items.filter((item) => !item.done)
     : items;
 
+  if (!list) {
+    return (
+      <div className="page">
+        <p>List with id {id} was not found.</p>
+      </div>
+    );
+  }
   if (hasLeft) {
     return (
       <div className="page">
