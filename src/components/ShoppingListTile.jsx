@@ -8,7 +8,6 @@ function ShoppingListTile({ list, onOpenDetail, onDelete, disabled }) {
 
   return (
     <article className="list-tile">
-      {/* klikací tělo kartičky */}
       <div
         className="list-tile-body"
         onClick={() => onOpenDetail(list.id)}
@@ -31,7 +30,6 @@ function ShoppingListTile({ list, onOpenDetail, onDelete, disabled }) {
         </div>
       </div>
 
-      {/* spodní část s tlačítkem */}
       <div className="list-tile-footer">
         <span className="owner-label">
           {list.isOwner ? "Owner" : "Member"}

@@ -58,36 +58,44 @@ function ListDetailPage({ shoppingLists, setShoppingLists, status, error }) {
     setItems(list.items ?? []);
   }, [list]);
 
-  async function persistChanges(partialData) {
-    if (!list) return;
+async function persistChanges(partialData) {
+  if (!list) return;
 
-    try {
-      setIsSaving(true);
-      setSaveError(null);
+  let dataToSave = { ...partialData };
 
-      const updated = await updateShoppingList(list.id, partialData);
-
-      if (!updated) {
-        setSaveError("Failed to update shopping list.");
-        return;
-      }
-
-      setShoppingLists((prev) =>
-        prev.map((l) => (l.id === list.id ? updated : l))
-      );
-
-      const updatedName = updated.name ?? "My Shopping List";
-      setListName(updatedName);
-      setEditedListName(updatedName);
-      setItems(updated.items ?? []);
-    } catch (err) {
-      console.error(err);
-      setSaveError("Failed to update shopping list.");
-    } finally {
-      setIsSaving(false);
-    }
+  if (Object.prototype.hasOwnProperty.call(partialData, "items")) {
+    const items = partialData.items ?? [];
+    dataToSave.itemsCount = items.length;
+    dataToSave.unresolvedCount = items.filter((i) => !i.done).length;
   }
+  try {
+    setIsSaving(true);
+    setSaveError(null);
 
+    const updated = await updateShoppingList(list.id, dataToSave);
+
+    if (!updated) {
+      setSaveError("Failed to update shopping list.");
+      return;
+    }
+
+    // update global state
+    setShoppingLists((prev) =>
+      prev.map((l) => (l.id === list.id ? updated : l))
+    );
+
+    // sync local state
+    const updatedName = updated.name ?? "My Shopping List";
+    setListName(updatedName);
+    setEditedListName(updatedName);
+    setItems(updated.items ?? []);
+  } catch (err) {
+    console.error(err);
+    setSaveError("Failed to update shopping list.");
+  } finally {
+    setIsSaving(false);
+  }
+}
   // list name logic (only owner can change)
 
   const startEditName = () => {
