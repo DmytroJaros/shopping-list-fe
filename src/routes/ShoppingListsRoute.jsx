@@ -1,15 +1,43 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./ShoppingListsRoute.css";
+import ShoppingListTile from "../components/ShoppingListTile";
+import {createShoppingList, deleteShoppingList,} from "../api/shoppingListsApi";
 
-function ShoppingListsRoute({ shoppingLists, setShoppingLists }) {
-  // filter + modal state remain local
+function ShoppingListsRoute({
+  shoppingLists,
+  setShoppingLists,
+  status,
+  error
+}) {
   const [showArchived, setShowArchived] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newListName, setNewListName] = useState("");
   const [newListDescription, setNewListDescription] = useState("");
 
   const navigate = useNavigate();
+
+  if (status === "pending") {
+    return (
+      <div className="lists-page">
+        <header className="lists-header">
+          <h1>Shopping lists</h1>
+        </header>
+        <p>Loading shopping lists…</p>
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div className="lists-page">
+        <header className="lists-header">
+          <h1>Shopping lists</h1>
+        </header>
+        <p style={{ color: "red" }}>{error}</p>
+      </div>
+    );
+  }
 
   const filteredLists = shoppingLists.filter((list) =>
     showArchived ? true : !list.isArchived
@@ -29,33 +57,29 @@ function ShoppingListsRoute({ shoppingLists, setShoppingLists }) {
     setIsCreateModalOpen(false);
   }
 
-  function handleCreateList(event) {
+  // create via API
+  async function handleCreateList(event) {
     event.preventDefault();
 
-    if (!newListName.trim()) {
-      return;
-    }
+    const name = newListName.trim();
+    const description = newListDescription.trim();
 
-    const newId =
-      shoppingLists.length === 0
-        ? 1
-        : Math.max(...shoppingLists.map((l) => l.id)) + 1;
+    if (!name) return;
 
-    const newList = {
-      id: newId,
-      name: newListName.trim(),
-      description: newListDescription.trim(),
+    const created = await createShoppingList({
+      name,
+      description,
       isArchived: false,
       isOwner: true,
-      itemsCount: 0,
-      unresolvedCount: 0
-    };
+      items: []
+    });
 
-    setShoppingLists((prev) => [...prev, newList]);
+    setShoppingLists((prev) => [...prev, created]);
     setIsCreateModalOpen(false);
   }
 
-  function handleDeleteList(id) {
+  // delete via API
+  async function handleDeleteList(id) {
     const list = shoppingLists.find((l) => l.id === id);
     if (!list) {
       return;
@@ -71,6 +95,12 @@ function ShoppingListsRoute({ shoppingLists, setShoppingLists }) {
     );
 
     if (!confirmed) {
+      return;
+    }
+
+    const ok = await deleteShoppingList(id);
+    if (!ok) {
+      alert("Deleting the list failed.");
       return;
     }
 
@@ -104,36 +134,12 @@ function ShoppingListsRoute({ shoppingLists, setShoppingLists }) {
 
       <main className="lists-grid">
         {filteredLists.map((list) => (
-          <article key={list.id} className="list-tile">
-            <div
-              className="list-tile-body"
-              onClick={() => handleOpenDetail(list.id)}
-            >
-              <div className="list-tile-header">
-                <h2>{list.name}</h2>
-                {list.isArchived && <span className="badge badge-archived">Archived</span>}
-              </div>
-              <p className="list-description">{list.description}</p>
-              <div className="list-meta">
-                <span>{list.itemsCount} items</span>
-                <span>{list.unresolvedCount} open</span>
-              </div>
-            </div>
-
-            <div className="list-tile-footer">
-              <span className="owner-label">
-                {list.isOwner ? "Owner" : "Member"}
-              </span>
-              <button
-                type="button"
-                className="danger-button"
-                disabled={!list.isOwner}
-                onClick={() => handleDeleteList(list.id)}
-              >
-                Delete
-              </button>
-            </div>
-          </article>
+          <ShoppingListTile
+            key={list.id}
+            list={list}
+            onOpenDetail={handleOpenDetail}
+            onDelete={handleDeleteList}
+          />
         ))}
 
         {filteredLists.length === 0 && (
@@ -189,5 +195,4 @@ function ShoppingListsRoute({ shoppingLists, setShoppingLists }) {
     </div>
   );
 }
-
 export default ShoppingListsRoute;

@@ -1,45 +1,94 @@
-import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { updateShoppingList } from "../api/shoppingListsApi";
+import ListHeader from "../components/ListHeader";
+import MembersSection from "../components/MembersSection";
+import ItemsSection from "../components/ItemsSection";
 
-const OWNER_ID = '1';
+const OWNER_ID = "1";
 
 const INITIAL_MEMBERS = [
-  { id: '1', name: 'John Doe', email: 'john@example.com', role: 'Owner', initial: 'J' },
-  { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'Member', initial: 'J' },
+  {
+    id: "1",
+    name: "John Doe",
+    email: "john@example.com",
+    role: "Owner",
+    initial: "J",
+  },
+  {
+    id: "2",
+    name: "Jane Smith",
+    email: "jane@example.com",
+    role: "Member",
+    initial: "J",
+  },
 ];
 
-const INITIAL_ITEMS = [
-  { id: '1', name: 'Milk', done: false },
-  { id: '2', name: 'Bread', done: true },
-  { id: '3', name: 'Eggs', done: false },
-];
-
-function ListDetailPage({ shoppingLists }) {
+function ListDetailPage({ shoppingLists, setShoppingLists, status, error }) {
   const { id } = useParams();
   const listId = Number(id);
 
   const list = shoppingLists.find((l) => l.id === listId);
-  const initialListName = list?.name ?? "My Shopping List";
 
   const [currentUserId, setCurrentUserId] = useState(OWNER_ID);
 
-  // List name state
-  const [listName, setListName] = useState(initialListName);
+  const [listName, setListName] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
-  const [editedListName, setEditedListName] = useState(initialListName);
+  const [editedListName, setEditedListName] = useState("");
 
-  // Members and items
   const [members, setMembers] = useState(INITIAL_MEMBERS);
-  const [items, setItems] = useState(INITIAL_ITEMS);
 
-  const [newItemName, setNewItemName] = useState('');
+  const [items, setItems] = useState([]);
+
+  const [newItemName, setNewItemName] = useState("");
   const [showOnlyUnresolved, setShowOnlyUnresolved] = useState(false);
 
-  const isOwner = currentUserId === OWNER_ID;
   const [hasLeft, setHasLeft] = useState(false);
 
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
-  // List name logic (only owner can change)
+  const isOwner = currentUserId === OWNER_ID;
+
+  useEffect(() => {
+    if (!list) return;
+    const name = list.name ?? "My Shopping List";
+    setListName(name);
+    setEditedListName(name);
+    setItems(list.items ?? []);
+  }, [list]);
+
+  async function persistChanges(partialData) {
+    if (!list) return;
+
+    try {
+      setIsSaving(true);
+      setSaveError(null);
+
+      const updated = await updateShoppingList(list.id, partialData);
+
+      if (!updated) {
+        setSaveError("Failed to update shopping list.");
+        return;
+      }
+
+      setShoppingLists((prev) =>
+        prev.map((l) => (l.id === list.id ? updated : l))
+      );
+
+      const updatedName = updated.name ?? "My Shopping List";
+      setListName(updatedName);
+      setEditedListName(updatedName);
+      setItems(updated.items ?? []);
+    } catch (err) {
+      console.error(err);
+      setSaveError("Failed to update shopping list.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  // list name logic (only owner can change)
 
   const startEditName = () => {
     if (!isOwner) return;
@@ -51,22 +100,23 @@ function ListDetailPage({ shoppingLists }) {
     setIsEditingName(false);
   };
 
-  const saveEditName = () => {
+  const saveEditName = async () => {
     const trimmed = editedListName.trim();
     if (!trimmed) return;
-    setListName(trimmed);
+
+    await persistChanges({ name: trimmed });
     setIsEditingName(false);
   };
 
-  // Members logic
+  // members logic (without API)
 
   const inviteMember = () => {
     if (!isOwner) return;
 
-    const name = window.prompt('Enter member name');
+    const name = window.prompt("Enter member name");
     if (!name) return;
 
-    const email = window.prompt('Enter member email');
+    const email = window.prompt("Enter member email");
     if (!email) return;
 
     const trimmedName = name.trim();
@@ -81,7 +131,7 @@ function ListDetailPage({ shoppingLists }) {
         id: Date.now().toString(),
         name: trimmedName,
         email: trimmedEmail,
-        role: 'Member',
+        role: "Member",
         initial,
       },
     ]);
@@ -94,7 +144,7 @@ function ListDetailPage({ shoppingLists }) {
 
   const leaveList = () => {
     if (isOwner) {
-      window.alert('Owner cannot leave the list.');
+      window.alert("Owner cannot leave the list.");
       return;
     }
 
@@ -102,40 +152,59 @@ function ListDetailPage({ shoppingLists }) {
     setHasLeft(true);
   };
 
-  // Items logic
+  // items logic (via API)
 
-  const toggleItem = (itemId) => {
-    setItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === itemId ? { ...item, done: !item.done } : item
-      )
+  const toggleItem = async (itemId) => {
+    const newItems = items.map((item) =>
+      item.id === itemId ? { ...item, done: !item.done } : item
     );
+    setItems(newItems);
+    await persistChanges({ items: newItems });
   };
 
-  const deleteItem = (itemId) => {
-    setItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+  const deleteItem = async (itemId) => {
+    const newItems = items.filter((item) => item.id !== itemId);
+    setItems(newItems);
+    await persistChanges({ items: newItems });
   };
 
-  const addItem = () => {
+  const addItem = async () => {
     const trimmed = newItemName.trim();
     if (!trimmed) return;
 
-    setItems((prevItems) => [
-      ...prevItems,
+    const newItems = [
+      ...items,
       {
         id: Date.now().toString(),
         name: trimmed,
         done: false,
       },
-    ]);
+    ];
 
-    setNewItemName('');
+    setItems(newItems);
+    setNewItemName("");
+    await persistChanges({ items: newItems });
   };
 
-  const resolvedCount = items.filter((item) => item.done).length;
-  const displayedItems = showOnlyUnresolved
-    ? items.filter((item) => !item.done)
-    : items;
+  // global loading/error
+
+  if (status === "pending") {
+    return (
+      <div className="page">
+        <p>Loading shopping list…</p>
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div className="page">
+        <p style={{ color: "red" }}>{error}</p>
+      </div>
+    );
+  }
+
+  // not found
 
   if (!list) {
     return (
@@ -144,6 +213,7 @@ function ListDetailPage({ shoppingLists }) {
       </div>
     );
   }
+
   if (hasLeft) {
     return (
       <div className="page">
@@ -152,197 +222,48 @@ function ListDetailPage({ shoppingLists }) {
     );
   }
 
+  // render
   return (
     <div className="page">
-      {/* Header */}
-      <header className="page-header">
-        <div className="page-header-left">
-          {isEditingName ? (
-            <>
-              <input
-                className="page-title-input"
-                type="text"
-                value={editedListName}
-                onChange={(e) => setEditedListName(e.target.value)}
-              />
-              <button
-                type="button"
-                className="btn-outline"
-                onClick={saveEditName}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                onClick={cancelEditName}
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <>
-              <h1 className="page-title">{listName}</h1>
-              {isOwner && (
-                <button
-                  type="button"
-                  className="btn-outline"
-                  onClick={startEditName}
-                >
-                  Edit name
-                </button>
-              )}
-            </>
-          )}
-        </div>
+      <ListHeader
+        listId={id}
+        listName={listName}
+        isOwner={isOwner}
+        isSaving={isSaving}
+        currentUserId={currentUserId}
+        onChangeCurrentUser={setCurrentUserId}
+        onStartEditName={startEditName}
+        isEditingName={isEditingName}
+        editedListName={editedListName}
+        onChangeEditedListName={setEditedListName}
+        onSaveEditName={saveEditName}
+        onCancelEditName={cancelEditName}
+        onLeaveList={leaveList}
+      />
 
-    <div className="page-header-right">
-      <span className="header-meta">List id: {id}</span>
-      <span className="header-meta">
-        Role: {isOwner ? 'Owner' : 'Member'}
-      </span>
+      {isSaving && <div>Saving changes…</div>}
+      {saveError && <div style={{ color: "red" }}>{saveError}</div>}
 
-      <div className="view-switcher">
-        <span className="header-meta">View as:</span>
-        <select
-          className="view-select"
-          value={currentUserId}
-          onChange={(e) => setCurrentUserId(e.target.value)}
-        >
-          <option value="1">Owner (John Doe)</option>
-          <option value="2">Member (Jane Smith)</option>
-        </select>
-      </div>
+      <MembersSection
+        members={members}
+        isOwner={isOwner}
+        isSaving={isSaving}
+        onInvite={inviteMember}
+        onRemove={removeMember}
+      />
 
-      {!isOwner && (
-        <button
-          type="button"
-          className="btn-outline leave-btn"
-          onClick={leaveList}
-        >
-          Leave list
-        </button>
-      )}
-    </div>
-
-      </header>
-
-      {/* Members section */}
-      <section className="section">
-        <div className="section-header">
-          <h2>Members</h2>
-          {isOwner && (
-            <button
-              type="button"
-              className="btn-outline"
-              onClick={inviteMember}
-            >
-              Invite member
-            </button>
-          )}
-        </div>
-
-        <div className="members-list">
-          {members.map((member) => (
-            <div key={member.id} className="member-card">
-              <div className="member-left">
-                <div className="member-avatar">{member.initial}</div>
-                <div>
-                  <div className="member-name">{member.name}</div>
-                  <div className="member-email">{member.email}</div>
-                </div>
-                <div className="member-role">{member.role}</div>
-              </div>
-
-              {isOwner && member.role === 'Member' && (
-                <button
-                  type="button"
-                  className="btn-outline"
-                  onClick={() => removeMember(member.id)}
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Items section */}
-      <section className="section">
-        <div className="section-header">
-          <h2>Items</h2>
-
-          <div className="items-controls">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={showOnlyUnresolved}
-                onChange={(e) => setShowOnlyUnresolved(e.target.checked)}
-              />
-              <span>Show only unresolved</span>
-            </label>
-
-            <span className="resolved-info">
-              Resolved items: {resolvedCount}
-            </span>
-          </div>
-        </div>
-
-        {/* Add item row */}
-        <div className="add-item-row">
-          <input
-            type="text"
-            placeholder="Item name"
-            value={newItemName}
-            onChange={(e) => setNewItemName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addItem()}
-            className="text-input"
-          />
-          <button
-            type="button"
-            className="btn-outline"
-            onClick={addItem}
-          >
-            Add
-          </button>
-        </div>
-
-        {/* Items table */}
-        <div className="items-table">
-          <div className="items-header-row">
-            <div>Done</div>
-            <div>Item name</div>
-            <div className="items-header-actions">Action</div>
-          </div>
-
-          {displayedItems.map((item) => (
-            <div key={item.id} className="items-row">
-              <div>
-                <input
-                  type="checkbox"
-                  checked={item.done}
-                  onChange={() => toggleItem(item.id)}
-                />
-              </div>
-              <div className={item.done ? 'item-name done' : 'item-name'}>
-                {item.name}
-              </div>
-              <div className="items-actions">
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={() => deleteItem(item.id)}
-                >
-                  ✕ Delete
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <ItemsSection
+        items={items}
+        isSaving={isSaving}
+        newItemName={newItemName}
+        onChangeNewItemName={setNewItemName}
+        onAddItem={addItem}
+        onToggleItem={toggleItem}
+        onDeleteItem={deleteItem}
+        showOnlyUnresolved={showOnlyUnresolved}
+        onChangeShowOnlyUnresolved={setShowOnlyUnresolved}
+      />
     </div>
   );
 }
-
 export default ListDetailPage;

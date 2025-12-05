@@ -1,7 +1,7 @@
 .lists-page {
   min-height: 100vh;
   padding: 24px;
-  background-color: #111827; /* dark background, similar to detail page */
+  background-color: #111827;
   color: #e5e7eb;
   box-sizing: border-box;
 }
