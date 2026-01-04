@@ -8,7 +8,12 @@ function ShoppingListsRoute({
   shoppingLists,
   setShoppingLists,
   status,
-  error
+  error,
+  theme,
+  onToggleTheme,
+  t,
+  lang,
+  setLang,
 }) {
   const [showArchived, setShowArchived] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -21,9 +26,9 @@ function ShoppingListsRoute({
     return (
       <div className="lists-page">
         <header className="lists-header">
-          <h1>Shopping lists</h1>
+          <h1>{t("shoppingLists")}</h1>
         </header>
-        <p>Loading shopping lists…</p>
+        <p>{t("loadingLists")}</p>
       </div>
     );
   }
@@ -32,7 +37,7 @@ function ShoppingListsRoute({
     return (
       <div className="lists-page">
         <header className="lists-header">
-          <h1>Shopping lists</h1>
+          <h1>{t("shoppingLists")}</h1>
         </header>
         <p style={{ color: "red" }}>{error}</p>
       </div>
@@ -86,12 +91,12 @@ function ShoppingListsRoute({
     }
 
     if (!list.isOwner) {
-      alert("You can delete only lists where you are an owner.");
+      alert(t("deleteOwnerOnly"));
       return;
     }
 
     const confirmed = window.confirm(
-      `Do you really want to delete list "${list.name}"?`
+      t("deleteConfirm", { name: list.name })
     );
 
     if (!confirmed) {
@@ -100,7 +105,7 @@ function ShoppingListsRoute({
 
     const ok = await deleteShoppingList(id);
     if (!ok) {
-      alert("Deleting the list failed.");
+      alert(t("deletingFailed"));
       return;
     }
 
@@ -110,24 +115,39 @@ function ShoppingListsRoute({
   return (
     <div className="lists-page">
       <header className="lists-header">
-        <h1>Shopping lists</h1>
+      <h1>{t("shoppingLists")}</h1>
 
         <div className="lists-header-actions">
+
+          <button type="button" className="theme-toggle" onClick={onToggleTheme}>
+           {theme === "dark" ? t("lightMode") : t("darkMode")}
+          </button>
+
           <label className="lists-filter">
             <input
               type="checkbox"
               checked={showArchived}
               onChange={(event) => setShowArchived(event.target.checked)}
             />
-            <span>Show archived lists</span>
+            <span>{t("showArchived")}</span>
           </label>
+
+          <select
+            value={lang}
+            onChange={(e) => setLang(e.target.value)}
+            className="lang-select"
+            aria-label={t("language")}
+          >
+            <option value="en">EN</option>
+            <option value="cs">CZ</option>
+          </select>
 
           <button
             type="button"
             className="primary-button"
             onClick={handleOpenCreateModal}
           >
-            + New list
+            {t("newList")}
           </button>
         </div>
       </header>
@@ -139,11 +159,12 @@ function ShoppingListsRoute({
             list={list}
             onOpenDetail={handleOpenDetail}
             onDelete={handleDeleteList}
+            t={t}
           />
         ))}
 
         {filteredLists.length === 0 && (
-          <p className="empty-message">No shopping lists for selected filter.</p>
+          <p className="empty-message">{t("noListsForFilter")}</p>
         )}
       </main>
 
@@ -153,11 +174,11 @@ function ShoppingListsRoute({
             className="modal"
             onClick={(event) => event.stopPropagation()}
           >
-            <h2>Create new shopping list</h2>
+            <h2>{t("createNewList")}</h2>
 
             <form onSubmit={handleCreateList} className="modal-form">
               <label>
-                Name
+                {t("name")}
                 <input
                   type="text"
                   value={newListName}
@@ -166,7 +187,7 @@ function ShoppingListsRoute({
               </label>
 
               <label>
-                Description
+                {t("description")}
                 <textarea
                   value={newListDescription}
                   onChange={(event) =>
@@ -182,10 +203,10 @@ function ShoppingListsRoute({
                   className="secondary-button"
                   onClick={handleCloseCreateModal}
                 >
-                  Cancel
+                  {t("cancel")}
                 </button>
                 <button type="submit" className="primary-button">
-                  Create
+                  {t("create")}
                 </button>
               </div>
             </form>

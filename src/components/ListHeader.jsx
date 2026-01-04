@@ -13,8 +13,9 @@ function ListHeader({
   onChangeEditedListName,
   onSaveEditName,
   onCancelEditName,
-  onLeaveList
-}) {
+  onLeaveList,
+  t
+  }) {
   return (
     <header className="page-header">
       <div className="page-header-left">
@@ -33,7 +34,7 @@ function ListHeader({
               onClick={onSaveEditName}
               disabled={isSaving}
             >
-              Save
+              {t("save")}
             </button>
             <button
               type="button"
@@ -41,7 +42,7 @@ function ListHeader({
               onClick={onCancelEditName}
               disabled={isSaving}
             >
-              Cancel
+              {t("cancel")}
             </button>
           </>
         ) : (
@@ -54,7 +55,7 @@ function ListHeader({
                 onClick={onStartEditName}
                 disabled={isSaving}
               >
-                Edit name
+                {t("editName")}
               </button>
             )}
           </>
@@ -62,21 +63,19 @@ function ListHeader({
       </div>
 
       <div className="page-header-right">
-        <span className="header-meta">List id: {listId}</span>
-        <span className="header-meta">
-          Role: {isOwner ? "Owner" : "Member"}
-        </span>
+        <span className="header-meta">{t("listId")}: {listId}</span>
+        <span className="header-meta"> {t("role")}: {isOwner ? t("owner") : t("member")} </span>
 
         <div className="view-switcher">
-          <span className="header-meta">View as:</span>
+          <span className="header-meta">{t("viewAs")}:</span>
           <select
             className="view-select"
             value={currentUserId}
             onChange={(e) => onChangeCurrentUser(e.target.value)}
             disabled={isSaving}
           >
-            <option value="1">Owner (John Doe)</option>
-            <option value="2">Member (Jane Smith)</option>
+            <option value="1">{t("ownerName")}</option>
+            <option value="2">{t("memberName")}</option>
           </select>
         </div>
 
@@ -87,7 +86,7 @@ function ListHeader({
             onClick={onLeaveList}
             disabled={isSaving}
           >
-            Leave list
+            {t("leaveList")}
           </button>
         )}
       </div>

@@ -9,7 +9,8 @@ function ItemsSection({
   onToggleItem,
   onDeleteItem,
   showOnlyUnresolved,
-  onChangeShowOnlyUnresolved
+  onChangeShowOnlyUnresolved,
+  t
 }) {
   const resolvedCount = items.filter((item) => item.done).length;
   const displayedItems = showOnlyUnresolved
@@ -19,7 +20,7 @@ function ItemsSection({
   return (
     <section className="section">
       <div className="section-header">
-        <h2>Items</h2>
+        <h2>{t("itemsTitle")}</h2>
 
         <div className="items-controls">
           <label className="checkbox-label">
@@ -29,11 +30,11 @@ function ItemsSection({
               onChange={(e) => onChangeShowOnlyUnresolved(e.target.checked)}
               disabled={isSaving}
             />
-            <span>Show only unresolved</span>
+            <span>{t("showOnlyUnresolved")}</span>
           </label>
 
           <span className="resolved-info">
-            Resolved items: {resolvedCount}
+            {t("resolvedItems", { count: resolvedCount })}
           </span>
         </div>
       </div>
@@ -54,15 +55,15 @@ function ItemsSection({
           onClick={onAddItem}
           disabled={isSaving}
         >
-          Add
+          {t("add")}
         </button>
       </div>
 
       <div className="items-table">
         <div className="items-header-row">
-          <div>Done</div>
-          <div>Item name</div>
-          <div className="items-header-actions">Action</div>
+          <div>{t("done")}</div>
+          <div>{t("itemName")}</div>
+          <div className="items-header-actions">{t("action")}</div>
         </div>
 
         {displayedItems.map((item) => (
@@ -85,7 +86,7 @@ function ItemsSection({
                 onClick={() => onDeleteItem(item.id)}
                 disabled={isSaving}
               >
-                ✕ Delete
+                 {t("deleteItem")}
               </button>
             </div>
           </div>

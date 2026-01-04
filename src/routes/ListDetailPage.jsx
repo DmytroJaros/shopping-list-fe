@@ -4,6 +4,7 @@ import { updateShoppingList } from "../api/shoppingListsApi";
 import ListHeader from "../components/ListHeader";
 import MembersSection from "../components/MembersSection";
 import ItemsSection from "../components/ItemsSection";
+import ItemsStatsChart from "../components/ItemsStatsChart";
 
 const OWNER_ID = "1";
 
@@ -24,7 +25,7 @@ const INITIAL_MEMBERS = [
   },
 ];
 
-function ListDetailPage({ shoppingLists, setShoppingLists, status, error }) {
+function ListDetailPage({ shoppingLists, setShoppingLists, status, error, theme, onToggleTheme, t }) {
   const { id } = useParams();
   const listId = Number(id);
 
@@ -75,7 +76,7 @@ async function persistChanges(partialData) {
     const updated = await updateShoppingList(list.id, dataToSave);
 
     if (!updated) {
-      setSaveError("Failed to update shopping list.");
+      setSaveError(t("updateFailed"));
       return;
     }
 
@@ -91,7 +92,7 @@ async function persistChanges(partialData) {
     setItems(updated.items ?? []);
   } catch (err) {
     console.error(err);
-    setSaveError("Failed to update shopping list.");
+    setSaveError(t("updateFailed"));
   } finally {
     setIsSaving(false);
   }
@@ -121,10 +122,10 @@ async function persistChanges(partialData) {
   const inviteMember = () => {
     if (!isOwner) return;
 
-    const name = window.prompt("Enter member name");
+    const name = window.prompt(t("enterMemberName"));
     if (!name) return;
 
-    const email = window.prompt("Enter member email");
+    const email = window.prompt(t("enterMemberEmail"));
     if (!email) return;
 
     const trimmedName = name.trim();
@@ -152,7 +153,7 @@ async function persistChanges(partialData) {
 
   const leaveList = () => {
     if (isOwner) {
-      window.alert("Owner cannot leave the list.");
+      window.alert(t("ownerCannotLeave"));
       return;
     }
 
@@ -199,7 +200,7 @@ async function persistChanges(partialData) {
   if (status === "pending") {
     return (
       <div className="page">
-        <p>Loading shopping list…</p>
+        <p>{t("loadingList")}</p>
       </div>
     );
   }
@@ -217,7 +218,7 @@ async function persistChanges(partialData) {
   if (!list) {
     return (
       <div className="page">
-        <p>List with id {id} was not found.</p>
+        <p>{t("listNotFound", { id })}</p>
       </div>
     );
   }
@@ -225,14 +226,23 @@ async function persistChanges(partialData) {
   if (hasLeft) {
     return (
       <div className="page">
-        <p>You have left this list and no longer have access.</p>
+        <p>{t("leftList")}</p>
       </div>
     );
   }
+  const resolvedCount = items.filter((i) => i.done).length;
+  const unresolvedCount = items.length - resolvedCount;
 
   // render
   return (
     <div className="page">
+
+      <div className="page-toolbar">
+      <button type="button" className="theme-toggle" onClick={onToggleTheme}>
+      {theme === "dark" ? t("lightMode") : t("darkMode")}
+      </button>
+      </div>
+
       <ListHeader
         listId={id}
         listName={listName}
@@ -247,10 +257,17 @@ async function persistChanges(partialData) {
         onSaveEditName={saveEditName}
         onCancelEditName={cancelEditName}
         onLeaveList={leaveList}
+        t={t}
       />
 
-      {isSaving && <div>Saving changes…</div>}
+      {isSaving && <div>{t("saving")}</div>}
       {saveError && <div style={{ color: "red" }}>{saveError}</div>}
+
+      <ItemsStatsChart
+        resolvedCount={resolvedCount}
+        unresolvedCount={unresolvedCount}
+        t={t}
+      />
 
       <MembersSection
         members={members}
@@ -258,6 +275,7 @@ async function persistChanges(partialData) {
         isSaving={isSaving}
         onInvite={inviteMember}
         onRemove={removeMember}
+        t={t}
       />
 
       <ItemsSection
@@ -270,6 +288,7 @@ async function persistChanges(partialData) {
         onDeleteItem={deleteItem}
         showOnlyUnresolved={showOnlyUnresolved}
         onChangeShowOnlyUnresolved={setShowOnlyUnresolved}
+        t={t}
       />
     </div>
   );
