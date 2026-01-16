@@ -2,27 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { updateShoppingList } from "../api/shoppingListsApi";
 import { sendInvite } from "../api/invitesApi";
+import { getListMembers } from "../api/listMembersApi";
 import ListHeader from "../components/ListHeader";
 import MembersSection from "../components/MembersSection";
 import ItemsSection from "../components/ItemsSection";
 import ItemsStatsChart from "../components/ItemsStatsChart";
 
-const INITIAL_MEMBERS = [
-  {
-    id: "1",
-    name: "John Doe",
-    email: "john@example.com",
-    role: "Owner",
-    initial: "J",
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    email: "jane@example.com",
-    role: "Member",
-    initial: "J",
-  },
-];
+const INITIAL_MEMBERS = [];
 
 function ListDetailPage({ shoppingLists, setShoppingLists, status, error, t }) {
   const { id } = useParams();
@@ -53,6 +39,41 @@ function ListDetailPage({ shoppingLists, setShoppingLists, status, error, t }) {
     setEditedListName(name);
     setItems(list.items ?? []);
   }, [list]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadMembers() {
+      if (!listId) return;
+      try {
+        const rows = await getListMembers(listId);
+        if (!isMounted) return;
+        const mapped = rows.map((row) => {
+          const email = row.profiles?.email ?? "";
+          const name =
+            row.profiles?.full_name ??
+            (email ? email.split("@")[0] : t("member"));
+          const initial = (name || email || "?").charAt(0).toUpperCase();
+          return {
+            id: row.user_id,
+            name,
+            email,
+            role: row.role,
+            initial,
+          };
+        });
+        setMembers(mapped);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    loadMembers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [listId, t]);
 
 async function persistChanges(partialData) {
   if (!list) return;

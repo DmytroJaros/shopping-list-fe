@@ -49,11 +49,14 @@ function MembersSection({ members, isOwner, isSaving, onInvite, onRemove, t }) {
                 <div className="member-email">{member.email}</div>
               </div>
               <div className="member-role">
-                {member.role === "Owner" ? t("owner") : t("member")}
+                {member.role === "owner" || member.role === "Owner"
+                  ? t("owner")
+                  : t("member")}
               </div>
             </div>
 
-            {isOwner && member.role === "Member" && (
+            {isOwner &&
+              (member.role === "member" || member.role === "Member") && (
               <button
                 type="button"
                 className="btn-outline"
@@ -62,7 +65,7 @@ function MembersSection({ members, isOwner, isSaving, onInvite, onRemove, t }) {
               >
                 {t("remove")}
               </button>
-            )}
+              )}
           </div>
         ))}
       </div>
