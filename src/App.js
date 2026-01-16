@@ -6,6 +6,10 @@ import ShoppingListsRoute from "./routes/ShoppingListsRoute";
 import ListDetailPage from "./routes/ListDetailPage";
 import { getShoppingLists } from "./api/shoppingListsApi";
 import { translations } from "./i18n/translations";
+import { supabase } from "./supabaseClient";
+import AuthPanel from "./components/AuthPanel";
+import { acceptInvite } from "./api/invitesApi";
+import NavBar from "./components/NavBar";
 
 function App() {
   const [shoppingLists, setShoppingLists] = useState([]);
@@ -13,6 +17,8 @@ function App() {
   const [error, setError] = useState(null);
   const [theme, setTheme] = useState(() => {return localStorage.getItem("theme") || "dark";});
   const [lang, setLang] = useState(() => localStorage.getItem("lang") || "en");
+  const [session, setSession] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
 
   function t(key, params = {}) {
     const dict = translations[lang] || translations.en;
@@ -42,6 +48,15 @@ function App() {
     {
       let isMounted = true;
 
+      if (!session) {
+        setShoppingLists([]);
+        setStatus("ready");
+        setError(null);
+        return () => {
+          isMounted = false;
+        };
+      }
+
       async function load() {
         try {
           setStatus("pending");
@@ -65,11 +80,91 @@ function App() {
       return () => {
         isMounted = false;
       };
-    }, []
+    }, [session]
 );
 
+  useEffect(() => {
+    let isMounted = true;
+
+    supabase.auth
+      .getSession()
+      .then(({ data, error: sessionError }) => {
+        if (!isMounted) return;
+        if (sessionError) {
+          console.error(sessionError);
+        }
+        setSession(data.session ?? null);
+        setAuthReady(true);
+      });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+    });
+
+    return () => {
+      isMounted = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+  }
+
+  useEffect(() => {
+    if (!session) return;
+
+    const url = new URL(window.location.href);
+    const tokenFromUrl = url.searchParams.get("invite");
+    const tokenFromStorage = localStorage.getItem("invite_token");
+    const token = tokenFromUrl || tokenFromStorage;
+
+    if (!token) return;
+
+    localStorage.removeItem("invite_token");
+    url.searchParams.delete("invite");
+    window.history.replaceState({}, "", url.pathname + url.search);
+
+    acceptInvite(token).catch((err) => {
+      console.error(err);
+    });
+  }, [session]);
+
+  if (!authReady) {
+    return (
+      <div className="page">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <>
+        <NavBar
+          theme={theme}
+          onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+          lang={lang}
+          setLang={setLang}
+          isSignedIn={false}
+          t={t}
+        />
+        <AuthPanel t={t} />
+      </>
+    );
+  }
+
   return (
-    <>    
+    <>
+    <NavBar
+      theme={theme}
+      onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+      lang={lang}
+      setLang={setLang}
+      onSignOut={handleSignOut}
+      isSignedIn
+      t={t}
+    />
     <Routes>
       <Route path="/" element={<Navigate to="/lists" replace />} />
 
@@ -81,11 +176,7 @@ function App() {
             setShoppingLists={setShoppingLists}
             status={status}
             error={error}
-            theme={theme}
-            onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
             t={t}
-            lang={lang}
-            setLang={setLang}
           />
         }
       />
@@ -98,8 +189,6 @@ function App() {
           setShoppingLists={setShoppingLists}
           status={status}
           error={error}
-          theme={theme}
-          onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
           t={t}
         />
       }

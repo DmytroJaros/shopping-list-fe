@@ -1,75 +1,155 @@
-import { initialShoppingLists } from "../data/initialShoppingLists";
+import { supabase } from "../supabaseClient";
 
-// In–memory mocked backend data
-let shoppingLists = [...initialShoppingLists];
-
-const SIMULATED_LATENCY_MS = 300;
-
-function simulateDelay(result) {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(result), SIMULATED_LATENCY_MS);
-  });
+async function requireUser() {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) {
+    throw error;
+  }
+  if (!data.user) {
+    throw new Error("Not authenticated");
+  }
+  return data.user;
 }
 
-//GET /shopping-lists
+function normalizeItems(rawItems) {
+  if (!Array.isArray(rawItems)) return [];
+  return rawItems.map((item) => ({
+    id: item.id,
+    name: item.name,
+    done: Boolean(item.done),
+  }));
+}
+
+function mapListRow(row, userId) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? "",
+    isArchived: row.is_archived ?? false,
+    isOwner: row.created_by === userId,
+    items: normalizeItems(row.items),
+  };
+}
+
+// GET /shopping-lists
 export async function getShoppingLists() {
-  return simulateDelay([...shoppingLists]);
+  const user = await requireUser();
+
+  const { data, error } = await supabase
+    .from("shopping_lists")
+    .select("id,name,description,is_archived,items,created_by,created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => mapListRow(row, user.id));
 }
 
-//GET /shopping-lists/:id
+// GET /shopping-lists/:id
 export async function getShoppingListById(id) {
-  const numericId = Number(id);
-  const list = shoppingLists.find((l) => l.id === numericId) ?? null;
-  return simulateDelay(list);
+  const user = await requireUser();
+
+  const { data, error } = await supabase
+    .from("shopping_lists")
+    .select("id,name,description,is_archived,items,created_by,created_at")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") {
+      return null;
+    }
+    throw error;
+  }
+
+  return mapListRow(data, user.id);
 }
 
-//POST /shopping-lists
+// POST /shopping-lists
 export async function createShoppingList(data) {
-  const maxId =
-    shoppingLists.length > 0
-      ? Math.max(...shoppingLists.map((l) => l.id))
-      : 0;
+  const user = await requireUser();
 
-  const newList = {
-    id: maxId + 1,
+  const payload = {
     name: data?.name ?? "New list",
     description: data?.description ?? "",
-    isArchived: data?.isArchived ?? false,
-    isOwner: data?.isOwner ?? true,
+    is_archived: data?.isArchived ?? false,
+    created_by: user.id,
     items: data?.items ?? [],
   };
 
-  shoppingLists.push(newList);
-  return simulateDelay(newList);
+  const { data: created, error } = await supabase
+    .from("shopping_lists")
+    .insert(payload)
+    .select("id,name,description,is_archived,items,created_by,created_at")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  const { error: memberError } = await supabase.from("list_members").insert({
+    list_id: created.id,
+    user_id: user.id,
+    role: "owner",
+  });
+
+  if (memberError) {
+    throw memberError;
+  }
+
+  return mapListRow(created, user.id);
 }
-  
-//PUT /shopping-lists/:id
+
+// PUT /shopping-lists/:id
 export async function updateShoppingList(id, data) {
-  const numericId = Number(id);
-  const index = shoppingLists.findIndex((l) => l.id === numericId);
+  const user = await requireUser();
 
-  if (index === -1) {
-    return simulateDelay(null);
+  const updates = {};
+
+  if (Object.prototype.hasOwnProperty.call(data, "name")) {
+    updates.name = data.name;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "description")) {
+    updates.description = data.description ?? "";
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "isArchived")) {
+    updates.is_archived = data.isArchived;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "items")) {
+    updates.items = data.items ?? [];
   }
 
-  const updated = {
-    ...shoppingLists[index],
-    ...data,
-  };
+  if (Object.keys(updates).length === 0) {
+    return null;
+  }
 
-  shoppingLists[index] = updated;
-  return simulateDelay(updated);
+  const { data: updated, error } = await supabase
+    .from("shopping_lists")
+    .update(updates)
+    .eq("id", id)
+    .select("id,name,description,is_archived,items,created_by,created_at")
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") {
+      return null;
+    }
+    throw error;
+  }
+
+  return mapListRow(updated, user.id);
 }
 
-//DELETE /shopping-lists/:id
+// DELETE /shopping-lists/:id
 export async function deleteShoppingList(id) {
-  const numericId = Number(id);
-  const index = shoppingLists.findIndex((l) => l.id === numericId);
+  await requireUser();
 
-  if (index === -1) {
-    return simulateDelay(false);
+  const { error } = await supabase.from("shopping_lists").delete().eq("id", id);
+  if (error) {
+    return false;
   }
 
-  shoppingLists.splice(index, 1);
-  return simulateDelay(true);
+  return true;
 }

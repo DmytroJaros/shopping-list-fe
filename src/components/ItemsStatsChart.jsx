@@ -58,10 +58,12 @@ function ItemsStatsChart({ resolvedCount, unresolvedCount, t }) {
         </ResponsiveContainer>
       </div>
 
-      <div style={{ marginTop: 8 }}>
-      <strong>{t("total")}:</strong> {total} | 
-      <strong>{t("resolved")}:</strong> {resolvedCount} |{" "}
-      <strong>{t("unresolved")}:</strong> {unresolvedCount}
+      <div className="stats-summary">
+        <strong>{t("total")}:</strong> {total}
+        <span className="stats-sep">|</span>
+        <strong>{t("resolved")}:</strong> {resolvedCount}
+        <span className="stats-sep">|</span>
+        <strong>{t("unresolved")}:</strong> {unresolvedCount}
       </div>
     </section>
   );

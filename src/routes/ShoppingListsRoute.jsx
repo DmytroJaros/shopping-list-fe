@@ -9,11 +9,7 @@ function ShoppingListsRoute({
   setShoppingLists,
   status,
   error,
-  theme,
-  onToggleTheme,
   t,
-  lang,
-  setLang,
 }) {
   const [showArchived, setShowArchived] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -118,11 +114,6 @@ function ShoppingListsRoute({
       <h1>{t("shoppingLists")}</h1>
 
         <div className="lists-header-actions">
-
-          <button type="button" className="theme-toggle" onClick={onToggleTheme}>
-           {theme === "dark" ? t("lightMode") : t("darkMode")}
-          </button>
-
           <label className="lists-filter">
             <input
               type="checkbox"
@@ -131,16 +122,6 @@ function ShoppingListsRoute({
             />
             <span>{t("showArchived")}</span>
           </label>
-
-          <select
-            value={lang}
-            onChange={(e) => setLang(e.target.value)}
-            className="lang-select"
-            aria-label={t("language")}
-          >
-            <option value="en">EN</option>
-            <option value="cs">CZ</option>
-          </select>
 
           <button
             type="button"

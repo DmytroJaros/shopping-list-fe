@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { updateShoppingList } from "../api/shoppingListsApi";
+import { sendInvite } from "../api/invitesApi";
 import ListHeader from "../components/ListHeader";
 import MembersSection from "../components/MembersSection";
 import ItemsSection from "../components/ItemsSection";
 import ItemsStatsChart from "../components/ItemsStatsChart";
-
-const OWNER_ID = "1";
 
 const INITIAL_MEMBERS = [
   {
@@ -25,13 +24,11 @@ const INITIAL_MEMBERS = [
   },
 ];
 
-function ListDetailPage({ shoppingLists, setShoppingLists, status, error, theme, onToggleTheme, t }) {
+function ListDetailPage({ shoppingLists, setShoppingLists, status, error, t }) {
   const { id } = useParams();
-  const listId = Number(id);
+  const listId = id;
 
   const list = shoppingLists.find((l) => l.id === listId);
-
-  const [currentUserId, setCurrentUserId] = useState(OWNER_ID);
 
   const [listName, setListName] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
@@ -44,12 +41,10 @@ function ListDetailPage({ shoppingLists, setShoppingLists, status, error, theme,
   const [newItemName, setNewItemName] = useState("");
   const [showOnlyUnresolved, setShowOnlyUnresolved] = useState(false);
 
-  const [hasLeft, setHasLeft] = useState(false);
-
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
 
-  const isOwner = currentUserId === OWNER_ID;
+  const isOwner = list?.isOwner ?? false;
 
   useEffect(() => {
     if (!list) return;
@@ -119,46 +114,33 @@ async function persistChanges(partialData) {
 
   // members logic (without API)
 
-  const inviteMember = () => {
+  const inviteMember = async () => {
     if (!isOwner) return;
-
-    const name = window.prompt(t("enterMemberName"));
-    if (!name) return;
 
     const email = window.prompt(t("enterMemberEmail"));
     if (!email) return;
-
-    const trimmedName = name.trim();
     const trimmedEmail = email.trim();
-    if (!trimmedName || !trimmedEmail) return;
+    if (!trimmedEmail) return;
 
-    const initial = trimmedName.charAt(0).toUpperCase();
-
-    setMembers((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        name: trimmedName,
+    try {
+      setIsSaving(true);
+      await sendInvite({
+        listId,
         email: trimmedEmail,
-        role: "Member",
-        initial,
-      },
-    ]);
+        baseUrl: window.location.origin,
+      });
+      window.alert(t("inviteSent"));
+    } catch (err) {
+      console.error(err);
+      window.alert(t("inviteFailed"));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const removeMember = (memberId) => {
     if (!isOwner) return;
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
-  };
-
-  const leaveList = () => {
-    if (isOwner) {
-      window.alert(t("ownerCannotLeave"));
-      return;
-    }
-
-    setMembers((prev) => prev.filter((m) => m.id !== currentUserId));
-    setHasLeft(true);
   };
 
   // items logic (via API)
@@ -223,13 +205,6 @@ async function persistChanges(partialData) {
     );
   }
 
-  if (hasLeft) {
-    return (
-      <div className="page">
-        <p>{t("leftList")}</p>
-      </div>
-    );
-  }
   const resolvedCount = items.filter((i) => i.done).length;
   const unresolvedCount = items.length - resolvedCount;
 
@@ -237,26 +212,17 @@ async function persistChanges(partialData) {
   return (
     <div className="page">
 
-      <div className="page-toolbar">
-      <button type="button" className="theme-toggle" onClick={onToggleTheme}>
-      {theme === "dark" ? t("lightMode") : t("darkMode")}
-      </button>
-      </div>
-
       <ListHeader
         listId={id}
         listName={listName}
         isOwner={isOwner}
         isSaving={isSaving}
-        currentUserId={currentUserId}
-        onChangeCurrentUser={setCurrentUserId}
         onStartEditName={startEditName}
         isEditingName={isEditingName}
         editedListName={editedListName}
         onChangeEditedListName={setEditedListName}
         onSaveEditName={saveEditName}
         onCancelEditName={cancelEditName}
-        onLeaveList={leaveList}
         t={t}
       />
 

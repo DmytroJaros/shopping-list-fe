@@ -4,6 +4,20 @@ export const translations = {
     language: "Language",
     darkMode: "Dark mode",
     lightMode: "Light mode",
+    signOut: "Sign out",
+
+    // auth
+    welcome: "Welcome",
+    signInToContinue: "Sign in to continue",
+    email: "Email",
+    password: "Password",
+    login: "Log in",
+    signUp: "Create account",
+    continueWithGoogle: "Continue with Google",
+    needAccount: "Need an account? Sign up",
+    haveAccount: "Already have an account? Log in",
+    checkEmail: "Check your email to confirm your account.",
+    authFailed: "Authentication failed.",
 
     // lists route
     shoppingLists: "Shopping lists",
@@ -41,8 +55,9 @@ export const translations = {
     members: "Members",
     inviteMember: "Invite member",
     remove: "Remove",
-    enterMemberName: "Enter member name",
     enterMemberEmail: "Enter member email",
+    inviteSent: "Invite sent.",
+    inviteFailed: "Failed to send invite.",
     ownerCannotLeave: "Owner cannot leave the list.",
 
     // items
@@ -61,7 +76,6 @@ export const translations = {
 
     // list header
     save: "Save",
-    cancel: "Cancel",
     editName: "Edit name",
     listId: "List id",
     role: "Role",
@@ -76,6 +90,20 @@ export const translations = {
     language: "Jazyk",
     darkMode: "Tmavý režim",
     lightMode: "Světlý režim",
+    signOut: "Odhl?sit se",
+
+    // auth
+    welcome: "V?tejte",
+    signInToContinue: "P?ihlaste se pro pokra?ov?n?",
+    email: "Email",
+    password: "Heslo",
+    login: "P?ihl?sit se",
+    signUp: "Vytvo?it ??et",
+    continueWithGoogle: "Pokra?ovat p?es Google",
+    needAccount: "Nem?te ??et? Zaregistrujte se",
+    haveAccount: "M?te ??et? P?ihlaste se",
+    checkEmail: "Zkontrolujte email pro potvrzen? ??tu.",
+    authFailed: "P?ihl??en? se nezda?ilo.",
 
     // lists route
     shoppingLists: "Nákupní seznamy",
@@ -133,7 +161,6 @@ export const translations = {
 
     // list heander
     save: "Uložit",
-    cancel: "Zrušit",
     editName: "Upravit název",
     listId: "ID seznamu",
     role: "Role",
